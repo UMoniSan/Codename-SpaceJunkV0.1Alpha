@@ -9,15 +9,17 @@ public class Osc : MonoBehaviour
 {
     public float FM = 44100f;
     int TM;
+    public int funcion = 0;
 
     [Range(20, 20000)]
     public float frecuencia = 100;
 
     public float TiempoSegundos = 2.0f;
     AudioSource audioSource;
-    int timeIndex = 0;
-    public Slider selector, level, Octava;
+    int timeIndex = 0, Octava = 0;
+    public Slider selector, level;
     public TextMeshProUGUI textoSeleccion, textonivel, textooctava;
+
     // variables para la selección de las formas de onda
     public enum WaveformType
     {
@@ -32,57 +34,9 @@ public class Osc : MonoBehaviour
     public float[] wavetable;
     public int wavetableSize = 2048;
 
-    // valores para la ADSR
-    [Range(5, 200)]
-    public float A = 100;
-    [Range(10, 300)]
-    public float D = 100;
-    [Range(100, 5000)]
-    public float S = 100;
-    [Range(0.001f, 1f)]
-    public float SLevel = 0.7f;
-    [Range(10, 500)]
-    public float R = 100;
-
-    // ADSR, generador de envolvente sonora
+    // Arreglo de envolvente ADSR
     private float[] env;
     private int ADSRindex = 0;
-
-    // Versión monofónica
-    void OnAudioFilterRead(float[] data, int channels)
-    {
-        if (env == null || wavetable == null) return;
-
-        for (int i = 0; i < data.Length; i += channels)
-        {
-            if (ADSRindex >= env.Length) break;
-
-            float E = env[ADSRindex];
-            float currentsample = 0f;
-
-            try
-            {
-                currentsample += wavetable[(int)(phaseM * wavetableSize)];
-                data[i] = currentsample * nivel;
-
-                if (channels == 2)
-                    data[i + 1] = currentsample * nivel;
-
-                phaseM += frecuencia / FM;
-                if (phaseM > 1f) phaseM -= 1f;
-
-                ADSRindex++; // Movido aquí para actualizar solo cuando se procesa un sample
-            }
-            catch (System.IndexOutOfRangeException ex)
-            {
-                Debug.LogError("An IndexOutOfRangeException occurred in OnAudioFilterRead.");
-                Debug.LogError("Error message: " + ex.Message);
-                break;
-            }
-        }
-    }
-
-    float phaseM; // Se agrega la inicialización de phaseM
 
     // Start is called before the first frame update
     void Start()
@@ -93,19 +47,26 @@ public class Osc : MonoBehaviour
         audioSource.Stop();
         GenerateWavetable();
         env = GetADSR();
-        phaseM = 0f; // Se inicializa phaseM
+
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name == "Piano")
+        {
+            PlaySong();
+        }
     }
 
     // Update is called once per frame
     void Update()
     {
+        env = GetADSR();
         TM = (int)(FM / frecuencia);
-        funcion = (int)selector.value;
-        textooctava.SetText(Octava.value.ToString());
     }
 
     // Funciones para la generación de cada forma de onda
-    public int funcion = 0;
     public float CreateSeno(int timeIndex, float frecuencia)
     {
         return Mathf.Sin(2 * Mathf.PI * timeIndex * frecuencia / FM);
@@ -143,7 +104,7 @@ public class Osc : MonoBehaviour
         else return (m2 * timeIndex + b2);
     }
 
-    // Arreglo de la wavetable
+    // Generación de la wavetable
     private void GenerateWavetable()
     {
         wavetable = new float[wavetableSize];
@@ -168,15 +129,16 @@ public class Osc : MonoBehaviour
         }
     }
 
+    // Método para manejar la pulsación de tecla
     public void KeyboardDown(float f)
     {
-        frecuencia = f * Mathf.Pow(2, Octava.value);
+        frecuencia = f * Mathf.Pow(2, Octava);
         if (!audioSource.isPlaying)
         {
             timeIndex = 0;
             audioSource.Play();
             funcion = 0;
-            ADSRindex = 0;
+            ADSRindex = 0; // Reiniciar el índice ADSR aquí
         }
     }
 
@@ -185,10 +147,8 @@ public class Osc : MonoBehaviour
         frecuencia = 0;
         audioSource.Stop();
         timeIndex = 0;
-        ADSRindex = 0;
+        ADSRindex = 0; // Reiniciar el índice ADSR aquí también
     }
-
-    // Resto de las funciones sin cambios...
 
     // Selección de forma de onda
     public void selection()
@@ -212,23 +172,21 @@ public class Osc : MonoBehaviour
         GenerateWavetable();
     }
 
-    // valor de amplitud calculado a partir de dBFS
+    // Método para calcular la amplitud a partir de dBFS
     int Vref = 32768;
-    float nivel = 1;
+    float DBFStoLinear(float dBfs)
+    {
+        return Mathf.Pow(10f, (dBfs / 20f));
+    }
 
+    float nivel = 1;
     public void amplitud()
     {
         nivel = DBFStoLinear(level.value);
         textonivel.SetText(Mathf.Round(level.value).ToString());
     }
 
-    // Convierte de dBFS a lineal
-    float DBFStoLinear(float dBfs)
-    {
-        return Mathf.Pow(10f, (dBfs / 20f));
-    }
-
-    // ADSR, generador de envolvente sonora
+    // Generador de envolvente sonora ADSR
     float[] GetADSR()
     {
         int totalADSRSize = (int)(FM * (A + D + S + R));
@@ -251,14 +209,59 @@ public class Osc : MonoBehaviour
         return envelope;
     }
 
+    [Range(5, 200)]
+    public float A = 100;
+    [Range(10, 300)]
+    public float D = 100;
+    [Range(100, 5000)]
+    public float S = 100;
+    [Range(0.001f, 1f)]
+    public float SLevel = 0.7f;
+    [Range(10, 500)]
+    public float R = 100;
+
     [Range(0, 1)]
     public float[] Amplitudes = new float[10] { 1, 0.9f, 0.8f, 0.7f, 0.6f, 0.5f, 0.4f, 0.4f, 0.4f, 0.4f };
     int armonicos = 10;
-    // --------------------------------------------------------------------------------
+    float phaseM;
+
+    // Versión monofónica
+    void OnAudioFilterRead(float[] data, int channels)
+    {
+        for (int i = 0; i < data.Length; i += channels)
+        {
+            if (ADSRindex >= env.Length)
+                break;
+
+            float E = env[ADSRindex];
+            float currentsample = 0f;
+
+            try
+            {
+                currentsample += wavetable[(int)(phaseM * wavetableSize)];
+                data[i] = currentsample * nivel;
+
+                if (channels == 2)
+                    data[i + 1] = currentsample * nivel;
+            }
+            catch (System.IndexOutOfRangeException ex)
+            {
+                Debug.LogError("An IndexOutOfRangeException occurred in OnAudioFilterRead.");
+                Debug.LogError("Error message: " + ex.Message);
+                break;
+            }
+
+            phaseM += frecuencia / FM;
+            if (phaseM > 1f)
+                phaseM -= 1f;
+
+            ADSRindex++;
+        }
+    }
 
     public void PlaySong()
     {
-        StartCoroutine(Song());    
+        StartCoroutine(Song1());
     }
 
     /* 
@@ -272,113 +275,342 @@ public class Osc : MonoBehaviour
         Semicorchea: *1/4        
     */
 
-    // Corutina: Cancion procedural
-    IEnumerator Song()
+    IEnumerator Song1()
     {
+        ADSRindex = 0; // Reiniciar el índice ADSR al inicio de la corutina
         float tempo = 160f;
         float TimePerNote = 60 / tempo;
-        Octava.value = 0;
+        Octava = 0;
         waveformType = WaveformType.Square;
 
-        // María tenía un corderito
-        KeyboardDown(246.942f);
+        // Estrellita donde estás
+        // a
+        KeyboardDown(130.813f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+
+        KeyboardDown(130.813f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+
+        KeyboardDown(195.998f);
         yield return new WaitForSeconds(TimePerNote);
         KeyboardUp();
 
         KeyboardDown(220f);
         yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();    
+
+        KeyboardDown(220f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();    
+
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote*2);
         KeyboardUp();
 
-        KeyboardDown(192.998f);
+        //--
+        KeyboardDown(174.614f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+
+        KeyboardDown(174.614f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(164.814f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(164.814f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(146.832f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(130.813f);
+        yield return new WaitForSeconds(TimePerNote*2);
+        KeyboardUp();
+
+        //b
+        
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(174.614f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(174.614f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+
+        KeyboardDown(164.814f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(164.814f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(146.832f);
+        yield return new WaitForSeconds(TimePerNote*2);
+        KeyboardUp();
+        //--
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(174.614f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(174.614f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+
+        KeyboardDown(164.814f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(164.814f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(146.832f);
+        yield return new WaitForSeconds(TimePerNote*2);
+        KeyboardUp();
+
+        //Bis
+        // a
+        KeyboardDown(130.813f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+
+        KeyboardDown(130.813f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+
+        KeyboardDown(195.998f);
         yield return new WaitForSeconds(TimePerNote);
         KeyboardUp();
 
         KeyboardDown(220f);
         yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();    
+
+        KeyboardDown(220f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();    
+
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote*2);
         KeyboardUp();
 
-        KeyboardDown(246.942f);
+        //--
+        KeyboardDown(174.614f);
         yield return new WaitForSeconds(TimePerNote);
         KeyboardUp();
 
-        KeyboardDown(246.942f);
+        KeyboardDown(174.614f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(164.814f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(164.814f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(146.832f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(130.813f);
+        yield return new WaitForSeconds(TimePerNote*2);
+        KeyboardUp();
+
+        //b
+        
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(174.614f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(174.614f);
         yield return new WaitForSeconds(TimePerNote);
         KeyboardUp();
 
-        KeyboardDown(246.942f);
-        yield return new WaitForSeconds(TimePerNote * 2);
+        KeyboardDown(164.814f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(164.814f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(146.832f);
+        yield return new WaitForSeconds(TimePerNote*2);
+        KeyboardUp();
+        //--
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(174.614f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(174.614f);
+        yield return new WaitForSeconds(TimePerNote);
         KeyboardUp();
 
+        KeyboardDown(164.814f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(164.814f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(146.832f);
+        yield return new WaitForSeconds(TimePerNote*2);
+        KeyboardUp();
+
+        yield return null;
+    }
+
+    IEnumerator Song2()
+    {
+        ADSRindex = 0; // Reiniciar el índice ADSR al inicio de la corutina
+        float tempo = 160f;
+        float TimePerNote = 60 / tempo;
+        Octava = 0;
+        waveformType = WaveformType.Square;
+
+        // Tengo una muñeca vestida de azul
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
         KeyboardDown(220f);
         yield return new WaitForSeconds(TimePerNote);
         KeyboardUp();
 
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(164.814f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(130.813f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(164.814f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
         KeyboardDown(220f);
         yield return new WaitForSeconds(TimePerNote);
         KeyboardUp();
 
-        KeyboardDown(220f);
-        yield return new WaitForSeconds(TimePerNote * 2);
+        KeyboardDown(195.998f);
+        yield return new WaitForSeconds(TimePerNote*2);
         KeyboardUp();
 
-        KeyboardDown(246.942f);
+        //---
+        
+        KeyboardDown(174.614f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(174.614f);
         yield return new WaitForSeconds(TimePerNote);
         KeyboardUp();
 
-        KeyboardDown(246.942f);
+        KeyboardDown(174.614f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(195.998f);
         yield return new WaitForSeconds(TimePerNote);
         KeyboardUp();
 
-        KeyboardDown(246.942f);
-        yield return new WaitForSeconds(TimePerNote * 2);
+        KeyboardDown(174.614f);
+        yield return new WaitForSeconds(TimePerNote);
         KeyboardUp();
-
-        KeyboardDown(246.942f);
+        
+        KeyboardDown(164.814f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(146.832f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(164.814f);
         yield return new WaitForSeconds(TimePerNote);
         KeyboardUp();
 
-        KeyboardDown(220f);
+        KeyboardDown(174.614f);
+        yield return new WaitForSeconds(TimePerNote);
+        KeyboardUp();
+        
+        KeyboardDown(146.832f);
         yield return new WaitForSeconds(TimePerNote);
         KeyboardUp();
 
-        KeyboardDown(192.998f);
-        yield return new WaitForSeconds(TimePerNote);
+        KeyboardDown(130.813f);
+        yield return new WaitForSeconds(TimePerNote*2);
         KeyboardUp();
 
-        KeyboardDown(220f);
-        yield return new WaitForSeconds(TimePerNote);
-        KeyboardUp();
-
-        KeyboardDown(246.942f);
-        yield return new WaitForSeconds(TimePerNote);
-        KeyboardUp();
-
-        KeyboardDown(246.942f);
-        yield return new WaitForSeconds(TimePerNote);
-        KeyboardUp();
-
-        KeyboardDown(246.942f);
-        yield return new WaitForSeconds(TimePerNote * 2);
-        KeyboardUp();
-
-        KeyboardDown(220f);
-        yield return new WaitForSeconds(TimePerNote);
-        KeyboardUp();
-
-        KeyboardDown(220f);
-        yield return new WaitForSeconds(TimePerNote);
-        KeyboardUp();
-
-        KeyboardDown(246.942f);
-        yield return new WaitForSeconds(TimePerNote);
-        KeyboardUp();
-
-        KeyboardDown(220f);
-        yield return new WaitForSeconds(TimePerNote);
-        KeyboardUp();
-
-        KeyboardDown(192.998f);
-        yield return new WaitForSeconds(TimePerNote * 4);
-        KeyboardUp();
+        yield return null;
     }
 }
