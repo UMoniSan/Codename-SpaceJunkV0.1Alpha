@@ -74,11 +74,6 @@ public class SceneChange : MonoBehaviour
 
     // -------------------- FIN & EXTRAS
 
-    public void PlayInstructions()
-    {
-        SceneManager.LoadScene(15);
-    }
-
     public void PlayFinalCutscene()
     {
         SceneManager.LoadScene(13);
@@ -87,6 +82,16 @@ public class SceneChange : MonoBehaviour
     public void PlayEndScene()
     {
         SceneManager.LoadScene(14);
+    }
+
+    public void PlayInstructions()
+    {
+        SceneManager.LoadScene(15);
+    }
+    
+    public void PlaytoConfig()
+    {
+        SceneManager.LoadScene(16);
     }
 
     public void QuitGame ()

@@ -6,6 +6,54 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
-    guid: 8c9cfa26abfee488c85f1582747f6a02
+    path: Assets/Scenes/MainMenu.unity
+    guid: 3303368639b39bc40a25d6239ffe61b1
+  - enabled: 1
+    path: Assets/Scenes/Cutscene1.unity
+    guid: 7c41a702e62d9dc4baacf3db68c0e1b0
+  - enabled: 1
+    path: Assets/Scenes/CharacterSelection.unity
+    guid: cb0b92ec3322ca04d8d8f227f43dadb0
+  - enabled: 1
+    path: Assets/Scenes/Planet1/2000 Neon-Level1.unity
+    guid: 477a99302d8c92544a5940dd0204e2ac
+  - enabled: 1
+    path: Assets/Scenes/Planet1/Results1.unity
+    guid: 23df87a4dd29a6a438e9e5ef369cb779
+  - enabled: 1
+    path: Assets/Scenes/Planet2/CandyMoon-Level1.unity
+    guid: 05a5cf59a697d294bb89698937ece336
+  - enabled: 1
+    path: Assets/Scenes/Planet2/Results5.unity
+    guid: fd74dee37827a474593a462638bd1192
+  - enabled: 1
+    path: Assets/Scenes/Planet3/FrostedStars-Level1.unity
+    guid: 1ed5ae46769fa45449dcc9147527ece6
+  - enabled: 1
+    path: Assets/Scenes/Planet3/Results10.unity
+    guid: b95b97e70dde0c34d8156edfe33f00ec
+  - enabled: 1
+    path: Assets/Scenes/Planet4/SunnyHighway-Level1.unity
+    guid: e2a1ee079dd71714d9ec3d6146f99d5b
+  - enabled: 1
+    path: Assets/Scenes/Planet4/Results15.unity
+    guid: a0bd70aef22e60740add65a96bb179ff
+  - enabled: 1
+    path: Assets/Scenes/Planet5/JapaneseStreet-Level1.unity
+    guid: 5cee791647730cb4d9c683e068d3e703
+  - enabled: 1
+    path: Assets/Scenes/Planet5/Results20.unity
+    guid: c7eb1d6ddb765284396ad667698d219d
+  - enabled: 1
+    path: Assets/Scenes/CusceneFinal.unity
+    guid: 547c82b420e10634ebec962cc299f33a
+  - enabled: 1
+    path: Assets/Scenes/EndScene.unity
+    guid: 421c5fefd24272b4b95a284fc0979fbd
+  - enabled: 1
+    path: Assets/Scenes/Instructions.unity
+    guid: b280be6ca19910f4d89be423e8b47bd2
+  - enabled: 1
+    path: Assets/Scenes/Config.unity
+    guid: 3b9bcb649f749754f84b0c0249370d10
   m_configObjects: {}
